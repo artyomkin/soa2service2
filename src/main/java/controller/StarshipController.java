@@ -1,6 +1,5 @@
 package controller;
 
-import controller.responses.UnexpectedError;
 import domain.StarshipRequest;
 import domain.XMLResponse;
 import org.apache.http.HttpResponse;
@@ -8,7 +7,6 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -22,7 +20,7 @@ import java.util.function.Consumer;
 @Path("/")
 public class StarshipController {
 
-    private String spaceMarineServiceUrl = "https://localhost:8081/api/v1/starships";
+    private String spaceMarineServiceUrl = "https://localhost:28081/api/v1/starships";
     private XMLParser<XMLResponse> xmlResponseParser = new XMLParser();
     private XMLParser<StarshipRequest> xmlStarshipParser = new XMLParser();
     private HttpsURLConnection connection;
@@ -50,11 +48,10 @@ public class StarshipController {
         return response;
     }
 
-    private HttpResponse httpsPostRequest(String inputUrl, String body) throws IOException {
+    private HttpResponse httpsPostRequest(String inputUrl) throws IOException {
         HttpClient client = HttpClientBuilder.create().build();
         HttpPost post = new HttpPost(inputUrl);
         post.setHeader("Content-Type", "application/xml");
-        post.setEntity(new StringEntity(body));
         HttpResponse response = client.execute(post);
         return response;
     }
@@ -70,29 +67,23 @@ public class StarshipController {
     @Produces(MediaType.APPLICATION_XML)
     @Consumes(MediaType.APPLICATION_XML)
     @Path("/starship/create/{id}/{name}")
-    @HttpsOnly
     public Response createStarship(@PathParam("id") Integer id, @PathParam("name") String name, StarshipRequest starshipRequest) throws JAXBException, InterruptedException {
         String responseEntity;
         Integer responseHttpStatusCode;
-        if (id != starshipRequest.getId()) {
-            responseHttpStatusCode = 400;
-            responseEntity = xmlResponseParser.convertToXML(new UnexpectedError("Id in URL does not match id in starship body"));
-        } else {
-            try {
-                HttpResponse response = httpsPostRequest(spaceMarineServiceUrl + "/" + name, xmlStarshipParser.convertToXML(starshipRequest));
-                responseHttpStatusCode = response.getStatusLine().getStatusCode();
-                responseEntity = new String(response.getEntity().getContent().readAllBytes());
-            } catch (IOException e){
-                responseHttpStatusCode = 503;
-                responseEntity = "Service is not ready to handle requests.";
-            }
+        try {
+            HttpResponse response = httpsPostRequest(spaceMarineServiceUrl + "/" + id.toString() + "/" + name);
+            responseHttpStatusCode = response.getStatusLine().getStatusCode();
+            responseEntity = new String(response.getEntity().getContent().readAllBytes());
+        } catch (IOException e){
+            responseHttpStatusCode = 503;
+            responseEntity = "Service is not ready to handle requests.";
         }
         return Response
                 .status(responseHttpStatusCode)
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Credentials", "true")
                 .header("Access-Control-Allow-Headers",
-                        "origin, content-type, accept, authorization")
+                        "Origin, Content-Type, Accept, Authorization")
                 .header("Access-Control-Allow-Methods",
                         "GET, POST, PUT, DELETE, OPTIONS, HEAD")
                 .entity(responseEntity)
@@ -103,7 +94,6 @@ public class StarshipController {
     @Path("/starships")
     @Produces(MediaType.APPLICATION_XML)
     @Consumes(MediaType.APPLICATION_XML)
-    @HttpsOnly
     public Response getStarships() throws IOException, InterruptedException {
         String responseEntity;
         Integer responseHttpStatusCode;
@@ -120,19 +110,33 @@ public class StarshipController {
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Credentials", "true")
                 .header("Access-Control-Allow-Headers",
-                        "origin, content-type, accept, authorization")
+                        "Origin, Content-Type, Accept, Authorization")
                 .header("Access-Control-Allow-Methods",
                         "GET, POST, PUT, DELETE, OPTIONS, HEAD")
                 .entity(responseEntity)
                 .build();
     }
+    @OPTIONS
+    @Path("/starship/{starshipId}/unload/{spaceMarineId}")
+    public Response blyadskayaHuinya() {
+        return Response.ok("")
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
+                .header("Access-Control-Allow-Credentials", "true")
+                .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
+                .header("Access-Control-Max-Age", "1209600")
+                .build();
+    }
 
+    //@POST
     @PUT
     @Path("/starship/{starshipId}/unload/{spaceMarineId}")
     @Produces(MediaType.APPLICATION_XML)
-    @Consumes(MediaType.APPLICATION_XML)
-    @HttpsOnly
     public Response unload(@PathParam("starshipId") Integer starshipId, @PathParam("spaceMarineId") Integer spaceMarineId) throws IOException, InterruptedException {
+        //BufferedWriter writer = new BufferedWriter(new FileWriter("test.txt"));
+        //writer.write("test request " + starshipId + ' ' + spaceMarineId);
+        //writer.close();
+        //return Response.status(200).entity("Ok").build();
         String responseEntity;
         Integer responseHttpStatusCode;
         try{
@@ -143,12 +147,11 @@ public class StarshipController {
                 return Response
                         .status(responseHttpStatusCode)
                         .header("Access-Control-Allow-Origin", "*")
-                        .header("Access-Control-Allow-Credentials", "true")
                         .header("Access-Control-Allow-Headers",
-                                "origin, content-type, accept, authorization")
+                               "Origin, Content-Type, Accept, Authorization")
                         .header("Access-Control-Allow-Methods",
                                 "GET, POST, PUT, DELETE, OPTIONS, HEAD")
-                        .entity(responseEntity)
+                        .entity("Space marine" + spaceMarineId + " was not on starship " + starshipId)
                         .build();
             }
         } catch (IOException e){
@@ -157,9 +160,8 @@ public class StarshipController {
             return Response
                     .status(responseHttpStatusCode)
                     .header("Access-Control-Allow-Origin", "*")
-                    .header("Access-Control-Allow-Credentials", "true")
                     .header("Access-Control-Allow-Headers",
-                            "origin, content-type, accept, authorization")
+                            "Origin, Content-Type, Accept, Authorization")
                     .header("Access-Control-Allow-Methods",
                             "GET, POST, PUT, DELETE, OPTIONS, HEAD")
                     .entity(responseEntity)
@@ -168,11 +170,11 @@ public class StarshipController {
         return Response
                 .status(responseHttpStatusCode)
                 .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Credentials", "true")
                 .header("Access-Control-Allow-Headers",
-                        "origin, content-type, accept, authorization")
+                        "Origin, Content-Type, Accept, Authorization")
                 .header("Access-Control-Allow-Methods",
                         "GET, POST, PUT, DELETE, OPTIONS, HEAD")
+                .entity("Ok")
                 .build();
     }
 }

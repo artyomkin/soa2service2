@@ -1,0 +1,7 @@
+
+<web-app>
+    <init-param>
+        <param-name>javax.ws.rs.container.ContainerResponseFilter</param-name>
+        <param-value>CorsFilter</param-value>
+    </init-param>
+</web-app>
